@@ -1,71 +1,50 @@
+/**
+ * 判断给定的字节数组是否为有效的 UTF-8 编码
+ * @param {Array<number>|Uint8Array} bytes - 要检查的字节数组
+ * @returns {boolean} - 如果是有效的 UTF-8 编码则返回 true，否则返回 false
+ */
 function isUTF8(bytes) {
-    var i = 0;
-    while (i < bytes.length) {
-        if ((// ASCII
-            bytes[i] == 0x09 ||
-            bytes[i] == 0x0A ||
-            bytes[i] == 0x0D ||
-            (0x20 <= bytes[i] && bytes[i] <= 0x7E)
-        )
-        ) {
-            i += 1;
-            continue;
-        }
+    if (!bytes || bytes.length === 0) return true; // 空数据视为有效
 
-        if ((// non-overlong 2-byte
-            (0xC2 <= bytes[i] && bytes[i] <= 0xDF) &&
-            (0x80 <= bytes[i + 1] && bytes[i + 1] <= 0xBF)
-        )
-        ) {
+    let i = 0;
+    const len = bytes.length;
+
+    while (i < len) {
+        const byte = bytes[i];
+
+        // 1字节序列 (0xxxxxxx)
+        if ((byte & 0x80) === 0x00) {
+            i++;
+        }
+        // 2字节序列 (110xxxxx 10xxxxxx)
+        else if ((byte & 0xE0) === 0xC0) {
+            if (i + 1 >= len || (bytes[i + 1] & 0xC0) !== 0x80) {
+                return false;
+            }
             i += 2;
-            continue;
         }
-
-        if ((// excluding overlongs
-            bytes[i] == 0xE0 &&
-            (0xA0 <= bytes[i + 1] && bytes[i + 1] <= 0xBF) &&
-            (0x80 <= bytes[i + 2] && bytes[i + 2] <= 0xBF)
-        ) ||
-            (// straight 3-byte
-                ((0xE1 <= bytes[i] && bytes[i] <= 0xEC) ||
-                    bytes[i] == 0xEE ||
-                    bytes[i] == 0xEF) &&
-                (0x80 <= bytes[i + 1] && bytes[i + 1] <= 0xBF) &&
-                (0x80 <= bytes[i + 2] && bytes[i + 2] <= 0xBF)
-            ) ||
-            (// excluding surrogates
-                bytes[i] == 0xED &&
-                (0x80 <= bytes[i + 1] && bytes[i + 1] <= 0x9F) &&
-                (0x80 <= bytes[i + 2] && bytes[i + 2] <= 0xBF)
-            )
-        ) {
+        // 3字节序列 (1110xxxx 10xxxxxx 10xxxxxx)
+        else if ((byte & 0xF0) === 0xE0) {
+            if (i + 2 >= len || (bytes[i + 1] & 0xC0) !== 0x80 || (bytes[i + 2] & 0xC0) !== 0x80) {
+                return false;
+            }
             i += 3;
-            continue;
         }
-
-        if ((// planes 1-3
-            bytes[i] == 0xF0 &&
-            (0x90 <= bytes[i + 1] && bytes[i + 1] <= 0xBF) &&
-            (0x80 <= bytes[i + 2] && bytes[i + 2] <= 0xBF) &&
-            (0x80 <= bytes[i + 3] && bytes[i + 3] <= 0xBF)
-        ) ||
-            (// planes 4-15
-                (0xF1 <= bytes[i] && bytes[i] <= 0xF3) &&
-                (0x80 <= bytes[i + 1] && bytes[i + 1] <= 0xBF) &&
-                (0x80 <= bytes[i + 2] && bytes[i + 2] <= 0xBF) &&
-                (0x80 <= bytes[i + 3] && bytes[i + 3] <= 0xBF)
-            ) ||
-            (// plane 16
-                bytes[i] == 0xF4 &&
-                (0x80 <= bytes[i + 1] && bytes[i + 1] <= 0x8F) &&
-                (0x80 <= bytes[i + 2] && bytes[i + 2] <= 0xBF) &&
-                (0x80 <= bytes[i + 3] && bytes[i + 3] <= 0xBF)
-            )
-        ) {
+        // 4字节序列 (11110xxx 10xxxxxx 10xxxxxx 10xxxxxx)
+        else if ((byte & 0xF8) === 0xF0) {
+            if (i + 3 >= len ||
+                (bytes[i + 1] & 0xC0) !== 0x80 ||
+                (bytes[i + 2] & 0xC0) !== 0x80 ||
+                (bytes[i + 3] & 0xC0) !== 0x80) {
+                return false;
+            }
             i += 4;
-            continue;
         }
-        return false;
+        // 无效的 UTF-8 起始字节
+        else {
+            return false;
+        }
     }
+
     return true;
 }
